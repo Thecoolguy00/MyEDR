@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 import logging
 
 from dotenv import load_dotenv
@@ -16,18 +17,46 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-app = FastAPI(title="MyEDR", version="0.1.0")
+db: PostgresStore | None = None
+device_service: DeviceService | None = None
 
 
-# Database
-db = PostgresStore()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    global db, device_service
 
-device_service = DeviceService(db)
+    logger.info("Starting MyEDR server")
+
+    # Initialize database connection pool.
+    db = PostgresStore()
+
+    # Initialize services.
+    device_service = DeviceService(db)
+
+    # Initialize database schema.
+    #
+    # Temporary for Goal 1.
+    # Replace with migrations once the schema starts evolving.
+    db.execute(CREATE_DEVICES_TABLE)
+
+    logger.info("MyEDR server startup complete")
+
+    try:
+        yield
+
+    finally:
+        logger.info("Shutting down MyEDR server")
+
+        if db is not None:
+            db.close()
+
+        db = None
+        device_service = None
+
+        logger.info("MyEDR server shutdown complete")
 
 
-# Create initial schema.
-# We'll replace this with migrations later.
-db.execute(CREATE_DEVICES_TABLE)
+app = FastAPI(title="MyEDR", version="0.1.0", lifespan=lifespan)
 
 
 app.include_router(devices_router)
@@ -35,6 +64,12 @@ app.include_router(devices_router)
 
 @app.get("/health")
 def health():
+    if db is None:
+        return {
+            "status": "starting",
+            "service": "myedr-server",
+        }
+
     db.ping()
 
     return {
@@ -42,8 +77,3 @@ def health():
         "service": "myedr-server",
         "database": "ok",
     }
-
-
-@app.on_event("shutdown")
-def shutdown():
-    db.close()

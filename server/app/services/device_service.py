@@ -12,16 +12,15 @@ class DeviceService:
 
     def register_device(self, device: DeviceCreate) -> dict[str, Any]:
 
-        existing = self.db.fetch_one(
-            "SELECT id FROM devices WHERE device_uuid = %s", 
-            (device.device_uuid)
-        )
+        existing = self.db.fetch_one("SELECT id FROM devices WHERE device_uuid = %s", (device.device_uuid))
 
         if existing:
             raise ValueError("Device already registered")
 
         os_info = device.os
         hardware = device.hardware
+
+        network_interfaces = [interface.model_dump() for interface in device.network]
 
         result = self.db.execute(
             """
@@ -61,18 +60,59 @@ class DeviceService:
                 hardware.ram_bytes if hardware else None,
                 hardware.gpu if hardware else None,
 
-                json.dumps([
-                    interface.model_dump()
-                    for interface in device.network
-                ]),
-            ),
+                json.dumps(network_interfaces)
+            )
         )
 
-        return result["row"]
+        row = result["row"]
+
+        if row is None:
+            raise RuntimeError("Device insert returned no row")
+
+        return row
 
     def get_devices(self) -> list[dict[str, Any]]:
-        return self.db.fetch_all("SELECT * FROM devices ORDER BY created_at DESC")
+        return self.db.fetch_all(
+            """
+            SELECT
+                id,
+                device_uuid,
+                hostname,
+                serial_number,
+                os_name,
+                os_version,
+                os_build,
+                cpu,
+                ram_bytes,
+                gpu,
+                network_interfaces,
+                created_at,
+                updated_at
+            FROM devices
+            ORDER BY created_at DESC
+            """
+        )
 
     def get_device(self, device_uuid: str) -> dict[str, Any] | None:
 
-        return self.db.fetch_one("SELECT * FROM devices WHERE device_uuid = %s",(device_uuid))
+        return self.db.fetch_one(
+            """
+            SELECT
+                id,
+                device_uuid,
+                hostname,
+                serial_number,
+                os_name,
+                os_version,
+                os_build,
+                cpu,
+                ram_bytes,
+                gpu,
+                network_interfaces,
+                created_at,
+                updated_at
+            FROM devices
+            WHERE device_uuid = %s
+            """,
+            (device_uuid)
+        )

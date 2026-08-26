@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 
-from app.schemas.device import DeviceCreate, DeviceResponse
+from app.schemas.device import DeviceCreate
 from app.services.device_service import DeviceService
 
 
@@ -9,6 +9,9 @@ router = APIRouter(prefix="/api/v1/devices", tags=["devices"])
 
 def get_service() -> DeviceService:
     from app.main import device_service
+
+    if device_service is None:
+        raise HTTPException(status_code=503, detail="Service is not ready")
 
     return device_service
 
