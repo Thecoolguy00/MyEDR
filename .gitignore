@@ -6,28 +6,9 @@
 
 .langgraph_api
 
-#venv
-langgraph-env/
-
 #test jupyter files
 test_*.ipynb
 *_test.ipynb
-
-#models
-models/
-pretrained*/
-
-#Databases
-DB/
-
-#my voice embeddings
-my_voice_embedding*
-
-#any wav
-*.wav
-
-#langgraph related
-.langgraph_api/
 
 #logs
 logs/

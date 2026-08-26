@@ -1,0 +1,6 @@
+dotenv
+fastapi
+uvicorn[standard]
+psycopg[binary,pool]
+pydantic
+pydantic-settings
