@@ -12,7 +12,7 @@ class DeviceService:
 
     def register_device(self, device: DeviceCreate) -> dict[str, Any]:
 
-        existing = self.db.fetch_one("SELECT id FROM devices WHERE device_uuid = %s", (device.device_uuid))
+        existing = self.db.fetch_one("SELECT id FROM devices WHERE device_uuid = %s", (device.device_uuid,),)
 
         if existing:
             raise ValueError("Device already registered")
@@ -114,5 +114,5 @@ class DeviceService:
             FROM devices
             WHERE device_uuid = %s
             """,
-            (device_uuid)
+            (device_uuid,),
         )
