@@ -1,8 +1,49 @@
+import json
 import platform
 import subprocess
 import uuid
+from pathlib import Path
 
 from agent.models.device import OSInfo
+
+
+AGENT_DATA_DIR = Path.home() / ".myedr"
+IDENTITY_FILE = AGENT_DATA_DIR / "identity.json"
+
+
+def get_device_uuid() -> str:
+    """
+    Return the persistent MyEDR agent UUID.
+
+    On first run:
+    - Generate a UUID.
+    - Store it locally.
+
+    On future runs:
+    - Load and return the existing UUID.
+    """
+
+    try:
+        if IDENTITY_FILE.exists():
+            with IDENTITY_FILE.open("r", encoding="utf-8") as file:
+                identity = json.load(file)
+
+            device_uuid = identity.get("device_uuid")
+
+            if device_uuid:
+                return device_uuid
+
+        AGENT_DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+        device_uuid = str(uuid.uuid4())
+
+        with IDENTITY_FILE.open("w", encoding="utf-8") as file:
+            json.dump({"device_uuid": device_uuid},file)
+
+        return device_uuid
+
+    except (OSError, json.JSONDecodeError) as exc:
+        raise RuntimeError("Failed to create or load MyEDR device identity") from exc
 
 
 def _run_powershell(command: str) -> str | None:
@@ -35,29 +76,8 @@ def get_hostname() -> str:
     return platform.node()
 
 
-def get_device_uuid() -> str:
-    """
-    Temporary deterministic device identity.
-
-    For Goal 1 this gives the same UUID for the same
-    network adapter/MAC identity.
-
-    This will later be replaced with a persistent
-    agent-generated identity during installation.
-    """
-
-    mac = uuid.getnode()
-
-    return str(uuid.uuid5(uuid.NAMESPACE_DNS, f"myedr-device-{mac}"))
-
-
 def get_os_info() -> OSInfo:
-    result = _run_powershell(
-        """
-        $os = Get-CimInstance Win32_OperatingSystem
-        "$($os.Caption)|$($os.Version)|$($os.BuildNumber)"
-        """
-    )
+    result = _run_powershell("$os = Get-CimInstance Win32_OperatingSystem; $os.Caption + '|' + $os.Version + '|' + $os.BuildNumber")
 
     if result:
         parts = result.split("|", maxsplit=2)
@@ -76,8 +96,4 @@ def get_os_info() -> OSInfo:
 
 
 def get_serial_number() -> str | None:
-    return _run_powershell(
-        """
-        (Get-CimInstance Win32_BIOS).SerialNumber
-        """
-    )
+    return _run_powershell("(Get-CimInstance Win32_BIOS).SerialNumber")

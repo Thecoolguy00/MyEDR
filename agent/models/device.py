@@ -6,10 +6,11 @@ class OSInfo:
     version:str | None = None
     build:str | None = None
 
-    def to_dict(elf)->dict:
+    def to_dict(self)->dict:
         return {
-            "name": elf.name,
-            "version": elf.version
+            "name": self.name,
+            "version": self.version,
+            "build": self.build
         }
 
 
