@@ -1,0 +1,8 @@
+fastapi
+uvicorn[standard]
+psycopg[binary,pool]
+pydantic
+pydantic-settings
+python-dotenv
+pyjwt
+pwdlib[argon2]
